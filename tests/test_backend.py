@@ -27,7 +27,7 @@ class TestDjangoRedisCache:
         assert res is None
 
         res = cache.set("test_key_nx", 1, nx=True)
-        assert bool(res) is True
+        assert bool(res)
         # test that second set will have
         res = cache.set("test_key_nx", 2, nx=True)
         assert res is False
@@ -233,13 +233,13 @@ class TestDjangoRedisCache:
     def test_delete(self, cache: RedisCache):
         cache.set_many({"a": 1, "b": 2, "c": 3})
         res = cache.delete("a")
-        assert bool(res) is True
+        assert bool(res)
 
         res = cache.get_many(["a", "b", "c"])
         assert res == {"b": 2, "c": 3}
 
         res = cache.delete("a")
-        assert bool(res) is False
+        assert not bool(res)
 
     @patch("django_redis.cache.DJANGO_VERSION", (3, 1, 0, "final", 0))
     def test_delete_return_value_type_new31(self, cache: RedisCache):
@@ -266,28 +266,28 @@ class TestDjangoRedisCache:
     def test_delete_many(self, cache: RedisCache):
         cache.set_many({"a": 1, "b": 2, "c": 3})
         res = cache.delete_many(["a", "b"])
-        assert bool(res) is True
+        assert bool(res)
 
         res = cache.get_many(["a", "b", "c"])
         assert res == {"c": 3}
 
         res = cache.delete_many(["a", "b"])
-        assert bool(res) is False
+        assert not bool(res)
 
     def test_delete_many_generator(self, cache: RedisCache):
         cache.set_many({"a": 1, "b": 2, "c": 3})
-        res = cache.delete_many(key for key in ["a", "b"])
-        assert bool(res) is True
+        res = cache.delete_many(iter(["a", "b"]))
+        assert bool(res)
 
         res = cache.get_many(["a", "b", "c"])
         assert res == {"c": 3}
 
         res = cache.delete_many(["a", "b"])
-        assert bool(res) is False
+        assert not bool(res)
 
     def test_delete_many_empty_generator(self, cache: RedisCache):
-        res = cache.delete_many(key for key in cast(List[str], []))
-        assert bool(res) is False
+        res = cache.delete_many(iter(cast(List[str], [])))
+        assert not bool(res)
 
     def test_incr(self, cache: RedisCache):
         if isinstance(cache.client, herd.HerdClient):
@@ -476,13 +476,13 @@ class TestDjangoRedisCache:
             cache.set(key, "foo")
 
         res = cache.delete_pattern("*foo-a*")
-        assert bool(res) is True
+        assert bool(res)
 
         keys = cache.keys("foo*")
         assert set(keys) == {"foo-bb", "foo-bc"}
 
         res = cache.delete_pattern("*foo-a*")
-        assert bool(res) is False
+        assert not bool(res)
 
     @patch("django_redis.cache.RedisCache.client")
     def test_delete_pattern_with_custom_count(self, client_mock, cache: RedisCache):

@@ -27,18 +27,14 @@ class ShardClient(DefaultClient):
         raise NotImplementedError
 
     def connect(self, index=0):
-        connection_dict = {}
-        for name in self._server:
-            connection_dict[name] = self.connection_factory.connect(name)
-        return connection_dict
+        return {name: self.connection_factory.connect(name) for name in self._server}
 
     def get_server_name(self, _key):
         key = str(_key)
         g = self._findhash.match(key)
         if g is not None and len(g.groups()) > 0:
             key = g.groups()[0]
-        name = self._ring.get_node(key)
-        return name
+        return self._ring.get_node(key)
 
     def get_server(self, key):
         name = self.get_server_name(key)
@@ -247,7 +243,7 @@ class ShardClient(DefaultClient):
             raise ConnectionInterrupted(connection=client) from e
 
         if value is None:
-            raise ValueError("Key '%s' not found" % key)
+            raise ValueError(f"Key '{key}' not found")
 
         if isinstance(key, CacheKey):
             new_key = self.make_key(key.original_key(), version=version + delta)
@@ -301,7 +297,7 @@ class ShardClient(DefaultClient):
 
         keys = []
         for server, connection in self._serverdict.items():
-            keys.extend(key for key in connection.scan_iter(**kwargs))
+            keys.extend(iter(connection.scan_iter(**kwargs)))
 
         res = 0
         if keys:

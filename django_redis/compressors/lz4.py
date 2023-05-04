@@ -9,9 +9,7 @@ class Lz4Compressor(BaseCompressor):
     min_length = 15
 
     def compress(self, value: bytes) -> bytes:
-        if len(value) > self.min_length:
-            return _compress(value)
-        return value
+        return _compress(value) if len(value) > self.min_length else value
 
     def decompress(self, value: bytes) -> bytes:
         try:

@@ -120,7 +120,7 @@ def test_custom_key_function(cache: RedisCache, settings: SettingsWrapper):
         cache.set(key, "foo")
 
     res = cache.delete_pattern("*foo-a*")
-    assert bool(res) is True
+    assert bool(res)
 
     keys = cache.keys("foo*")
     assert set(keys) == {"foo-bb", "foo-bc"}

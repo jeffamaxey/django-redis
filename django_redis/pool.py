@@ -43,19 +43,18 @@ class ConnectionFactory:
             "parser_class": self.get_parser_cls(),
         }
 
-        password = self.options.get("PASSWORD", None)
-        if password:
+        if password := self.options.get("PASSWORD", None):
             kwargs["password"] = password
 
-        socket_timeout = self.options.get("SOCKET_TIMEOUT", None)
-        if socket_timeout:
+        if socket_timeout := self.options.get("SOCKET_TIMEOUT", None):
             assert isinstance(
                 socket_timeout, (int, float)
             ), "Socket timeout should be float or integer"
             kwargs["socket_timeout"] = socket_timeout
 
-        socket_connect_timeout = self.options.get("SOCKET_CONNECT_TIMEOUT", None)
-        if socket_connect_timeout:
+        if socket_connect_timeout := self.options.get(
+            "SOCKET_CONNECT_TIMEOUT", None
+        ):
             assert isinstance(
                 socket_connect_timeout, (int, float)
             ), "Socket connect timeout should be float or integer"
@@ -69,8 +68,7 @@ class ConnectionFactory:
         return a new connection.
         """
         params = self.make_connection_params(url)
-        connection = self.get_connection(params)
-        return connection
+        return self.get_connection(params)
 
     def disconnect(self, connection):
         """
@@ -95,9 +93,7 @@ class ConnectionFactory:
 
     def get_parser_cls(self):
         cls = self.options.get("PARSER_CLASS", None)
-        if cls is None:
-            return DefaultParser
-        return import_string(cls)
+        return DefaultParser if cls is None else import_string(cls)
 
     def get_or_create_connection_pool(self, params):
         """
@@ -121,7 +117,7 @@ class ConnectionFactory:
         behavior on creating connection pool.
         """
         cp_params = dict(params)
-        cp_params.update(self.pool_cls_kwargs)
+        cp_params |= self.pool_cls_kwargs
         pool = self.pool_cls.from_url(**cp_params)
 
         if pool.connection_kwargs.get("password", None) is None:
@@ -169,10 +165,7 @@ class SentinelConnectionFactory(ConnectionFactory):
         cp_params.update(service_name=url.hostname, sentinel_manager=self._sentinel)
         pool = super().get_connection_pool(cp_params)
 
-        # convert "is_master" to a boolean if set on the URL, otherwise if not
-        # provided it defaults to True.
-        is_master = parse_qs(url.query).get("is_master")
-        if is_master:
+        if is_master := parse_qs(url.query).get("is_master"):
             pool.is_master = to_bool(is_master[0])
 
         return pool

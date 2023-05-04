@@ -8,9 +8,7 @@ class ZStdCompressor(BaseCompressor):
     min_length = 15
 
     def compress(self, value: bytes) -> bytes:
-        if len(value) > self.min_length:
-            return pyzstd.compress(value)
-        return value
+        return pyzstd.compress(value) if len(value) > self.min_length else value
 
     def decompress(self, value: bytes) -> bytes:
         try:

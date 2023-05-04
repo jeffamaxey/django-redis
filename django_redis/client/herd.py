@@ -29,9 +29,7 @@ def _is_expired(x):
         return True
     val = x + random.randint(1, CACHE_HERD_TIMEOUT)
 
-    if val >= CACHE_HERD_TIMEOUT:
-        return True
-    return False
+    return val >= CACHE_HERD_TIMEOUT
 
 
 class HerdClient(DefaultClient):
@@ -95,10 +93,7 @@ class HerdClient(DefaultClient):
         packed = super().get(key, default=default, version=version, client=client)
         val, refresh = self._unpack(packed)
 
-        if refresh:
-            return default
-
-        return val
+        return default if refresh else val
 
     def get_many(self, keys, version=None, client=None):
         if client is None:

@@ -75,7 +75,7 @@ class DefaultClient:
         behavior.
         """
         if tried is None:
-            tried = list()
+            tried = []
 
         if tried and len(tried) < len(self._server):
             not_tried = [i for i in range(0, len(self._server)) if i not in tried]
@@ -104,10 +104,7 @@ class DefaultClient:
         if self._clients[index] is None:
             self._clients[index] = self.connect(index)
 
-        if show_index:
-            return self._clients[index], index
-        else:
-            return self._clients[index]
+        return (self._clients[index], index) if show_index else self._clients[index]
 
     def connect(self, index: int = 0) -> Redis:
         """
@@ -211,7 +208,7 @@ class DefaultClient:
             raise ConnectionInterrupted(connection=client) from e
 
         if value is None:
-            raise ValueError("Key '%s' not found" % key)
+            raise ValueError(f"Key '{key}' not found")
 
         if isinstance(key, CacheKey):
             new_key = self.make_key(key.original_key(), version=version + delta)
@@ -259,10 +256,7 @@ class DefaultClient:
         except _main_exceptions as e:
             raise ConnectionInterrupted(connection=client) from e
 
-        if value is None:
-            return default
-
-        return self.decode(value)
+        return default if value is None else self.decode(value)
 
     def persist(
         self, key: Any, version: Optional[int] = None, client: Optional[Redis] = None
@@ -531,20 +525,21 @@ class DefaultClient:
                 # if key expired after exists check, then we get
                 # key with wrong value and ttl -1.
                 # use lua script for atomicity
-                if not ignore_key_check:
-                    lua = """
+                lua = (
+                    """
+                    return redis.call('INCRBY', KEYS[1], ARGV[1])
+                    """
+                    if ignore_key_check
+                    else """
                     local exists = redis.call('EXISTS', KEYS[1])
                     if (exists == 1) then
                         return redis.call('INCRBY', KEYS[1], ARGV[1])
                     else return false end
                     """
-                else:
-                    lua = """
-                    return redis.call('INCRBY', KEYS[1], ARGV[1])
-                    """
+                )
                 value = client.eval(lua, 1, key, delta)
                 if value is None:
-                    raise ValueError("Key '%s' not found" % key)
+                    raise ValueError(f"Key '{key}' not found")
             except ResponseError:
                 # if cached value or total value is greater than 64 bit signed
                 # integer.
@@ -557,7 +552,7 @@ class DefaultClient:
                 # returns -2 if the key does not exist
                 # means, that key have expired
                 if timeout == -2:
-                    raise ValueError("Key '%s' not found" % key)
+                    raise ValueError(f"Key '{key}' not found")
                 value = self.get(key, version=version, client=client) + delta
                 self.set(key, value, version=version, timeout=timeout, client=client)
         except _main_exceptions as e:
@@ -617,13 +612,10 @@ class DefaultClient:
 
         if t >= 0:
             return t
-        elif t == -1:
+        elif t == -1 or t != -2:
             return None
-        elif t == -2:
-            return 0
         else:
-            # Should never reach here
-            return None
+            return 0
 
     def pttl(self, key, version=None, client=None):
         """
@@ -641,13 +633,10 @@ class DefaultClient:
 
         if t >= 0:
             return t
-        elif t == -1:
+        elif t == -1 or t != -2:
             return None
-        elif t == -2:
-            return 0
         else:
-            # Should never reach here
-            return None
+            return 0
 
     def has_key(
         self, key: Any, version: Optional[int] = None, client: Optional[Redis] = None
@@ -734,11 +723,10 @@ class DefaultClient:
         return CacheKey(self._backend.key_func(pattern, prefix, version_str))
 
     def close(self, **kwargs):
-        close_flag = self._options.get(
+        if close_flag := self._options.get(
             "CLOSE_CONNECTION",
             getattr(settings, "DJANGO_REDIS_CLOSE_CONNECTION", False),
-        )
-        if close_flag:
+        ):
             self.do_close_clients()
 
     def do_close_clients(self):
@@ -768,7 +756,6 @@ class DefaultClient:
         key = self.make_key(key, version=version)
         if timeout is None:
             return bool(client.persist(key))
-        else:
-            # Convert to milliseconds
-            timeout = int(timeout * 1000)
-            return bool(client.pexpire(key, timeout))
+        # Convert to milliseconds
+        timeout = int(timeout * 1000)
+        return bool(client.pexpire(key, timeout))
